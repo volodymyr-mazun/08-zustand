@@ -1,7 +1,6 @@
 
 // ----------ПОРОЖНІЙ ВМІСТ----------
 
-
 const ModalDefaultNote = () => {
     return null;
 };
