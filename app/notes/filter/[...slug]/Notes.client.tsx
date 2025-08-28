@@ -12,14 +12,15 @@ import NoteList from '@/components/NoteList/NoteList';
 import Loading from '@/components/Loader/Loader';
 import ErrorMessage from '@/components/ErrorMessage/ErrorMessage';
 
-import { fetchNotes } from '@/lib/api';
+import { fetchNotes, FetchNotesResponse } from '@/lib/api';
 import Link from 'next/link';
 
 interface NotesClientProps {
     tag?: string;
+    initialData: FetchNotesResponse; 
 }
 
-export default function NotesClient({ tag }: NotesClientProps) {
+export default function NotesClient({ tag, initialData }: NotesClientProps) {
     const [searchValue, setSearchValue] = useState('');
     const [debouncedSearchValue] = useDebounce(searchValue, 700);
     const [currentPage, setCurrentPage] = useState(1);
@@ -31,15 +32,15 @@ export default function NotesClient({ tag }: NotesClientProps) {
 
     const { data, isFetching, isError, isSuccess } = useQuery({
         queryKey: ['notes', { page: currentPage, tag: normalizedTag ?? '', search: debouncedSearchValue }],
-        queryFn: () =>
-            fetchNotes({
-                search: debouncedSearchValue,
-                page: currentPage,
-                tag: normalizedTag,
-            }),
-                placeholderData: keepPreviousData,
-                refetchOnMount: false,
-        });
+        queryFn: () => fetchNotes({
+            search: debouncedSearchValue,
+            page: currentPage,
+            tag: normalizedTag,
+        }),
+            initialData,                 
+            placeholderData: keepPreviousData,
+            refetchOnMount: false,
+    });
 
     const handleSearch = (value: string) => {
         setSearchValue(value);
@@ -50,29 +51,30 @@ export default function NotesClient({ tag }: NotesClientProps) {
 
     return (
         <div className={css.app}>
-            <div className={css.toolbar}>
-                <SearchBox value={searchValue} onChange={handleSearch} />
-                    {data.totalPages > 1 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            pageCount={data.totalPages}
-                            onPageChange={setCurrentPage}
-                        />
-                    )}
-                <Link className={css.button} href="/notes/action/create">Create note +</Link>
-            </div>
-    
+        <div className={css.toolbar}>
+            <SearchBox value={searchValue} onChange={handleSearch} />
+                
+            {data.totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    pageCount={data.totalPages}
+                    onPageChange={setCurrentPage}  
+                />
+            )}
+        <Link className={css.button} href="/notes/action/create">Create note +</Link>
+        </div>
+
             {isFetching && <Loading />}
             {isError && <ErrorMessage message="Failed to fetch notes" />}
-    
+
             {isSuccess &&
                 (data.notes.length > 0 ? (
-                    <NoteList notes={data.notes} />
-                        ) : (
-                            <div className={css.emptyState}>
-                                <p>No notes found. Create your first note!</p>
-                            </div>
-                    ))}
+                <NoteList notes={data.notes} />
+                    ) : (
+                <div className={css.emptyState}>
+                    <p>No notes found. Create your first note!</p>
+                </div>
+            ))}
         </div>
     );
 }
