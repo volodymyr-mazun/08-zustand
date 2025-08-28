@@ -1,104 +1,78 @@
+'use client';
 
-// ----------СТОРІНКА РОЗМІТКИ----------
+import { useState } from 'react';
+import { useDebounce } from 'use-debounce';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
-"use client";
+import css from './NotesPage.module.css';
 
-import css from "./NotesPage.module.css";
-import React, { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
+import SearchBox from '@/components/SearchBox/SearchBox';
+import Pagination from '@/components/Pagination/Pagination';
+import NoteList from '@/components/NoteList/NoteList';
+import Loading from '@/components/Loader/Loader';
+import ErrorMessage from '@/components/ErrorMessage/ErrorMessage';
 
-import { fetchNotes, FetchNotesResponse } from "@/lib/api";
-import NoteList from "@/components/NoteList/NoteList";
-import Pagination from "@/components/Pagination/Pagination";
-import SearchBox from "@/components/SearchBox/SearchBox";
-import Modal from "@/components/Modal/Modal";
-import NoteForm from "@/components/NoteForm/NoteForm";
+import { fetchNotes } from '@/lib/api';
+import Link from 'next/link';
 
 interface NotesClientProps {
-    tag: string;
-    initialData: FetchNotesResponse;
+    tag?: string;
 }
 
-export default function NotesClient({ tag, initialData }: NotesClientProps) {
-    const queryClient = useQueryClient();
-    const [page, setPage] = useState(1);
-    const [search, setSearch] = useState("");
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [debouncedSearch] = useDebounce(search, 500);
+export default function NotesClient({ tag }: NotesClientProps) {
+    const [searchValue, setSearchValue] = useState('');
+    const [debouncedSearchValue] = useDebounce(searchValue, 700);
+    const [currentPage, setCurrentPage] = useState(1);
 
-    const { data, isLoading, error, isFetching } = useQuery<FetchNotesResponse>({
-        queryKey: ["notes", page, debouncedSearch, tag],
+    const normalizedTag =
+        tag && tag !== 'All'
+            ? tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase()
+            : undefined;
+
+    const { data, isFetching, isError, isSuccess } = useQuery({
+        queryKey: ['notes', { page: currentPage, tag: normalizedTag ?? '', search: debouncedSearchValue }],
         queryFn: () =>
             fetchNotes({
-                page,
-                search: debouncedSearch,
-                tag: tag === "All" ? undefined : tag,
+                search: debouncedSearchValue,
+                page: currentPage,
+                tag: normalizedTag,
             }),
-        
-        
-        initialData: page === 1 && debouncedSearch === "" ? initialData : undefined,
-        placeholderData: () => ({
-            notes: [],
-            totalPages: 1,
-        }),
-    });
+                placeholderData: keepPreviousData,
+                refetchOnMount: false,
+        });
 
-    const handleSearchChange = (value: string) => {
-        setSearch(value);
-        setPage(1);
+    const handleSearch = (value: string) => {
+        setSearchValue(value);
+        setCurrentPage(1);
     };
 
-    const handlePageChange = ({ selected }: { selected: number }) => {
-        setPage(selected + 1);
-    };
-
-    const openModal = () => setIsModalOpen(true);
-    const closeModal = () => setIsModalOpen(false);
-
-    const handleNoteCreated = () => {
-        queryClient.invalidateQueries({ queryKey: ["notes"] });
-        closeModal();
-    };
+    if (!data) return null;
 
     return (
         <div className={css.app}>
-            <div className={css.header}>
-                <h1 className={css.title}>
-                    {tag === "All" ? "All Notes" : `${tag} Notes`}
-                </h1>
+            <div className={css.toolbar}>
+                <SearchBox value={searchValue} onChange={handleSearch} />
+                    {data.totalPages > 1 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            pageCount={data.totalPages}
+                            onPageChange={setCurrentPage}
+                        />
+                    )}
+                <Link className={css.button} href="/notes/action/create">Create note +</Link>
             </div>
     
-            <header className={css.toolbar}>
-                <SearchBox value={search} onChange={handleSearchChange} />
-                <button className={css.button} onClick={openModal}>Create note +</button>
-            </header>
+            {isFetching && <Loading />}
+            {isError && <ErrorMessage message="Failed to fetch notes" />}
     
-            {isLoading && <p>Loading...</p>}
-    
-            {error && (
-                <div className={css.error}>
-                    Error:{" "}
-                    {error instanceof Error ? error.message : "Something went wrong"}
-                </div>
-            )}
-    
-            {data?.notes.length ? (
-                <>
+            {isSuccess &&
+                (data.notes.length > 0 ? (
                     <NoteList notes={data.notes} />
-                    {data.totalPages > 1 && ( <Pagination pageCount={data.totalPages} onPageChange={handlePageChange} currentPage={page - 1} /> )}
-                </>
-                ) : (
-                    !isLoading && <div className={css.noNotes}>No notes found</div>
-                )}
-    
-            {isModalOpen && (
-                <Modal onClose={closeModal}>
-                    <NoteForm onClose={handleNoteCreated} />
-                </Modal>
-            )}
-    
-            {isFetching && !isLoading && <p>Updating...</p>}
+                        ) : (
+                            <div className={css.emptyState}>
+                                <p>No notes found. Create your first note!</p>
+                            </div>
+                    ))}
         </div>
     );
 }

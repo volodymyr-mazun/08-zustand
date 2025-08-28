@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Roboto } from "next/font/google";
 import "./globals.css";
 
 import TanStackProvider from "@/components/TanStackProvider/TanStackProvider";
@@ -16,9 +16,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const robotoFont = Roboto({
+  variable: '--font-roboto',
+  weight: ['100', '300', '400', '500', '700', '900'],
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: "NOTEHUB",
-  description: "Your notes app",
+  title: 'NoteHub',
+  description: 'Manage your notes easily',
+  openGraph: {
+    title: 'NoteHub',
+    description: 'Manage your notes easily',
+    url: 'https://08-zustand-wheat.vercel.app/',
+    images: [
+      {
+        url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'NoteHub Open Graph Image',
+      },
+    ], type: 'article',
+  },
 };
 
 export default function RootLayout({
@@ -30,7 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${robotoFont.variable}`}>
         <TanStackProvider>
           <div className="container">
             <Header />
