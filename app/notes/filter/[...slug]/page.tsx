@@ -5,16 +5,20 @@ import { fetchNotes } from '@/lib/api';
 import NotesClient from './Notes.client';
 
 type NotesPageProps = {
-    params: { slug?: string[] };
+    params: Promise<{ slug?: string[] }>;
 };
 
 export default async function NotesPage({ params }: NotesPageProps) {
-    const rawTag = params.slug?.[0];
+    const { slug } = await params;
+    const rawTag = slug?.[0];
 
+    const tagForQuery =
+        rawTag && rawTag !== "All"
+            ? rawTag.charAt(0).toUpperCase() + rawTag.slice(1).toLowerCase()
+            : undefined;
 
-    const tagForQuery = rawTag && rawTag !== 'All' ? rawTag.charAt(0).toUpperCase() + rawTag.slice(1).toLowerCase() : undefined;
-    const initialData = await fetchNotes({ search: '', page: 1, tag: tagForQuery });
-    const tagForUI = tagForQuery ?? 'All';
-    
+    const initialData = await fetchNotes({ search: "", page: 1, tag: tagForQuery });
+    const tagForUI = tagForQuery ?? "All";
+
     return <NotesClient tag={tagForUI} initialData={initialData} />;
 }
